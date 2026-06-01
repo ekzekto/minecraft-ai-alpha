@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0, touch-action: manipulation">
+  <title>Minecraft 3D - Остров 16x16 v0.4</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { margin: 0; overflow: hidden; font-family: 'Courier New', monospace; background: #1a1a2e; touch-action: manipulation; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+    #menuScreen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 1000; color: white; text-align: center; overflow-y: auto; }
+    #menuScreen h1 { font-size: clamp(28px, 6vw, 48px); margin-bottom: 10px; text-shadow: 0 0 20px rgba(100,200,255,0.5); }
+    #menuScreen .subtitle { font-size: clamp(14px, 3vw, 20px); color: #aaa; margin-bottom: 30px; }
+    .device-buttons { display: flex; gap: 30px; flex-wrap: wrap; justify-content: center; }
+    .menu-btn { background: rgba(255,255,255,0.1); border: 2px solid rgba(255,255,255,0.3); border-radius: 20px; padding: 25px 35px; cursor: pointer; transition: all 0.3s; color: white; font-family: 'Courier New', monospace; font-size: clamp(16px, 3vw, 22px); min-width: 200px; margin: 10px; }
+    .menu-btn:hover { background: rgba(100,200,255,0.2); border-color: rgba(100,200,255,0.8); transform: scale(1.05); }
+    .menu-btn .icon { font-size: clamp(40px, 8vw, 60px); display: block; margin-bottom: 15px; }
+    #settingsBtn { position: fixed; top: 10px; right: 50px; z-index: 100; background: rgba(0,0,0,0.7); border: 2px solid rgba(255,255,255,0.5); border-radius: 12px; padding: 10px 18px; color: white; font-family: 'Courier New', monospace; font-size: 16px; cursor: pointer; display: none; transition: all 0.3s; }
+    #settingsBtn:hover { background: rgba(100,200,255,0.4); border-color: #4dc9f6; }
+    #settingsPanel { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #0a0a1e; border: 3px solid #4dc9f6; border-radius: 20px; padding: 25px; z-index: 9999; color: white; text-align: center; display: none; min-width: 300px; box-shadow: 0 0 60px rgba(0,0,0,0.9); }
+    #settingsPanel h3 { color: #4dc9f6; margin-bottom: 20px; font-size: 20px; }
+    #settingsPanel select, #settingsPanel input { width: 100%; padding: 10px; margin: 8px 0; border-radius: 8px; border: 1px solid rgba(255,255,255,0.3); background: #1a1a2e; color: white; font-family: 'Courier New', monospace; font-size: 14px; }
+    #settingsPanel button { background: #4dc9f6; color: #000; border: none; padding: 10px 30px; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 15px; font-family: 'Courier New', monospace; }
+    #settingsPanel button:hover { background: #7dd9ff; }
+    #settingsPanel label { display: block; text-align: left; margin-top: 10px; font-size: 13px; color: #aaa; }
+    #info { position: absolute; top: 10px; left: 10px; color: white; background: rgba(0,0,0,0.6); padding: 8px 15px; border-radius: 8px; font-size: 14px; pointer-events: none; z-index: 10; display: none; }
+    #waterOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(30, 100, 180, 0.4); pointer-events: none; z-index: 5; opacity: 0; }
+    #mobileControls { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 50; display: none; }
+    .ctrl-row { display: flex; gap: 5px; justify-content: center; margin: 3px 0; }
+    .ctrl-btn { width: 55px; height: 55px; background: rgba(255,255,255,0.2); border: 2px solid rgba(255,255,255,0.4); border-radius: 15px; color: white; font-size: 22px; display: flex; align-items: center; justify-content: center; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+    .ctrl-btn:active { background: rgba(255,255,255,0.5); }
+    .ctrl-btn.wide { width: 110px; font-size: 16px; }
+    #crosshair { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; font-size: 24px; opacity: 0; pointer-events: none; z-index: 20; display: none; }
+  </style>
+</head>
+<body>
+  <div id="menuScreen"><h1>⛏️ <span id="menuTitle">Minecraft 3D</span></h1><div class="subtitle" id="menuSubtitle">Остров 16×16 — Альфа 0.4</div><div class="device-buttons"><button class="menu-btn" id="pcBtn"><span class="icon">🖥️</span><span id="pcBtnText">ПК (WASD + Мышь)</span></button><button class="menu-btn" id="mobileBtn"><span class="icon">📱</span><span id="mobileBtnText">Телефон (Кнопки)</span></button></div></div>
+  <button id="settingsBtn" onclick="window.toggleSettingsPanel()">⚙️ <span id="settingsBtnText">Настройки</span></button>
+  <div id="settingsPanel"><h3 id="settingsTitle">⚙️ Настройки</h3><div class="setting-group"><label id="langLabel">🌐 Язык</label><select id="langSelect" onchange="window.applySettings()"><option value="ru">Русский</option><option value="en">English</option><option value="de">Deutsch</option></select></div><div class="setting-group"><label id="sensLabel">🎯 Чувствительность: <span id="sensValue">50%</span></label><input type="range" id="sensRange" min="10" max="100" value="50" oninput="window.applySettings()"></div><div class="setting-group"><label id="graphicsLabel">🎨 Графика</label><select id="graphicsSelect" onchange="window.applySettings()"><option value="high" id="gfxHigh">Низкая</option><option value="low" id="gfxLow" selected>Нормальная</option><option value="normal" id="gfxNormal">Высокая</option></select></div><button onclick="window.toggleSettingsPanel()" id="closeBtn">Закрыть</button></div>
+  <div id="waterOverlay"></div><div id="info"><h2>⛏️ <span id="infoTitle">Остров 16x16</span></h2><p id="versionText">Альфа 0.4</p></div><div id="crosshair">✚</div>
+  <div id="mobileControls"><div class="ctrl-row"><div class="ctrl-btn" data-key="w">▲</div></div><div class="ctrl-row"><div class="ctrl-btn" data-key="a">◀</div><div class="ctrl-btn" data-key="s">▼</div><div class="ctrl-btn" data-key="d">▶</div></div><div class="ctrl-row"><div class="ctrl-btn wide" data-key="space" id="jumpBtn">Прыжок</div><div class="ctrl-btn wide" data-key="shift" id="runBtn">Красться</div></div></div>
+  <script type="importmap">{ "imports": { "three": "https://unpkg.com/three@0.126.0/build/three.module.js", "three/addons/": "https://unpkg.com/three@0.126.0/examples/jsm/" } }</script>
+  <script type="module">
+    import * as THREE from 'three';
+    import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+    
+    const GS = { language: 'ru', sensitivity: 50, graphics: 'low', sensMultiplier: 1 };
+    window.GS = GS;
+    window.gameRenderer = null;
+    window.gameSun = null;
+    let mouseHandler = null;
+    let dayTime = 0;
+    const DAY_SPEED = 0.000833; // 20 минут на полный цикл
+    
+    const texts = { 
+      ru: { title:'Minecraft 3D', infoTitle:'Остров 16x16', pcBtn:'ПК (WASD + Мышь)', mobileBtn:'Телефон (Кнопки)', settingsBtn:'Настройки', settingsTitle:'⚙️ Настройки', langLabel:'🌐 Язык', sensLabel:'🎯 Чувствительность', graphicsLabel:'🎨 Графика', gfxLow:'Нормальная', gfxNormal:'Высокая', gfxHigh:'Низкая', closeBtn:'Закрыть', jump:'Прыжок', run:'Красться', version:'Альфа 0.4', subtitle:'Остров 16×16 — Альфа 0.4' }, 
+      en: { title:'Minecraft 3D', infoTitle:'16x16 Island', pcBtn:'PC (WASD + Mouse)', mobileBtn:'Phone (Buttons)', settingsBtn:'Settings', settingsTitle:'⚙️ Settings', langLabel:'🌐 Language', sensLabel:'🎯 Sensitivity', graphicsLabel:'🎨 Graphics', gfxLow:'Normal', gfxNormal:'High', gfxHigh:'Low', closeBtn:'Close', jump:'Jump', run:'Sneak', version:'Alpha 0.4', subtitle:'16×16 Island — Alpha 0.4' }, 
+      de: { title:'Minecraft 3D', infoTitle:'16x16 Insel', pcBtn:'PC (WASD + Maus)', mobileBtn:'Handy (Tasten)', settingsBtn:'Einstellungen', settingsTitle:'⚙️ Einstellungen', langLabel:'🌐 Sprache', sensLabel:'🎯 Empfindlichkeit', graphicsLabel:'🎨 Grafik', gfxLow:'Normal', gfxNormal:'Hoch', gfxHigh:'Niedrig', closeBtn:'Schließen', jump:'Springen', run:'Schleichen', version:'Alpha 0.4', subtitle:'16×16 Insel — Alpha 0.4' } 
+    };
+    
+    function updateAllText() { const t = texts[GS.language]; document.getElementById('menuTitle').textContent=t.title; document.getElementById('infoTitle').textContent=t.infoTitle; document.getElementById('pcBtnText').textContent=t.pcBtn; document.getElementById('mobileBtnText').textContent=t.mobileBtn; document.getElementById('settingsBtnText').textContent=t.settingsBtn; document.getElementById('settingsTitle').textContent=t.settingsTitle; document.getElementById('langLabel').textContent=t.langLabel; document.getElementById('sensLabel').innerHTML=t.sensLabel+': <span id="sensValue">'+GS.sensitivity+'%</span>'; document.getElementById('graphicsLabel').textContent=t.graphicsLabel; document.getElementById('gfxLow').textContent=t.gfxLow; document.getElementById('gfxNormal').textContent=t.gfxNormal; document.getElementById('gfxHigh').textContent=t.gfxHigh; document.getElementById('closeBtn').textContent=t.closeBtn; document.getElementById('versionText').textContent=t.version; document.getElementById('menuSubtitle').textContent=t.subtitle; document.getElementById('jumpBtn').textContent=t.jump; document.getElementById('runBtn').textContent=t.run; }
+    
+    window.toggleSettingsPanel = function() { const p=document.getElementById('settingsPanel'); if(p.style.display==='block'){p.style.display='none';}else{document.getElementById('langSelect').value=GS.language;document.getElementById('sensRange').value=GS.sensitivity;document.getElementById('graphicsSelect').value=GS.graphics;p.style.display='block';updateAllText();} };
+    window.applySettings = function() { GS.language=document.getElementById('langSelect').value; GS.sensitivity=parseInt(document.getElementById('sensRange').value); GS.sensMultiplier=(GS.sensitivity/100)*1.5; document.getElementById('sensValue').textContent=GS.sensitivity+'%'; const ng=document.getElementById('graphicsSelect').value; if(window.gameRenderer&&window.gameSun&&ng!==GS.graphics){GS.graphics=ng;if(ng==='high'){window.gameSun.shadow.mapSize.set(2048,2048);window.gameSun.intensity=1.4;}else if(ng==='normal'){window.gameSun.shadow.mapSize.set(1024,1024);window.gameSun.intensity=1.2;}else{window.gameSun.shadow.mapSize.set(512,512);window.gameSun.intensity=1.0;}window.gameSun.shadow.needsUpdate=true;}else{GS.graphics=ng;}updateAllText(); };
+    window.startGame = function(type) { document.getElementById('menuScreen').style.display='none'; document.getElementById('info').style.display='block'; document.getElementById('settingsBtn').style.display='block'; if(type==='mobile'){document.getElementById('mobileControls').style.display='block';document.getElementById('crosshair').style.display='block';document.getElementById('crosshair').style.opacity='0.8';} updateAllText(); initGame(type); };
+    document.getElementById('pcBtn').addEventListener('click',()=>window.startGame('pc'));
+    document.getElementById('mobileBtn').addEventListener('click',()=>window.startGame('mobile'));
+    
+    function getSkyColor() {
+      const r1=0.53,g1=0.81,b1=0.92;
+      const r2=0.1,g2=0.15,b2=0.35;
+      const t = Math.sin(dayTime * Math.PI * 2) * 0.5 + 0.5;
+      return new THREE.Color(r1*t+r2*(1-t), g1*t+g2*(1-t), b1*t+b2*(1-t));
+    }
+    
+    function getAmbientIntensity() { return 0.35 + Math.sin(dayTime * Math.PI * 2) * 0.35; }
+    function getSunIntensity() { return Math.max(0.2, Math.sin(dayTime * Math.PI * 2) * 1.2); }
+    
+    function createPixelTexture(color) {
+      const canvas = document.createElement('canvas');
+      canvas.width = 16; canvas.height = 16;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = color;
+      ctx.fillRect(0, 0, 16, 16);
+      ctx.fillStyle = 'rgba(255,255,255,0.4)';
+      ctx.fillRect(2, 2, 4, 4); ctx.fillRect(10, 4, 2, 2);
+      ctx.fillStyle = 'rgba(0,0,0,0.15)';
+      ctx.fillRect(12, 0, 4, 4); ctx.fillRect(4, 10, 3, 3);
+      const tex = new THREE.CanvasTexture(canvas);
+      tex.magFilter = THREE.NearestFilter; tex.minFilter = THREE.NearestFilter;
+      return tex;
+    }
+    
+    function initGame(deviceType) {
+      const PW=0.6,PH=1.7,EYE=1.6,GRAVITY=20,JUMP=8.5,WALK=5.5,SNEAK=2.5,WATER_Y=2.0;
+      const scene=new THREE.Scene(); scene.background = getSkyColor(); scene.fog = new THREE.Fog(getSkyColor(), 40, 85);
+      const cam=new THREE.PerspectiveCamera(70,innerWidth/innerHeight,0.1,1000);
+      const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.shadowMap.enabled=true;document.body.appendChild(renderer.domElement);window.gameRenderer=renderer;
+      const overlay=document.getElementById('waterOverlay');
+      const ctrl=new PointerLockControls(cam,renderer.domElement);ctrl.getObject().position.set(8,5.6,8);scene.add(ctrl.getObject());
+      if(mouseHandler)document.removeEventListener('mousemove',mouseHandler);
+      mouseHandler=(e)=>{if(ctrl.isLocked&&deviceType==='pc'){const mx=e.movementX||0,my=e.movementY||0;const euler=new THREE.Euler(0,0,0,'YXZ');euler.setFromQuaternion(ctrl.getObject().quaternion);euler.y-=mx*0.002*GS.sensMultiplier;euler.x-=my*0.002*GS.sensMultiplier;euler.x=Math.max(-Math.PI/2.5,Math.min(Math.PI/2.5,euler.x));ctrl.getObject().quaternion.setFromEuler(euler);}};
+      document.addEventListener('mousemove',mouseHandler);
+      if(deviceType==='pc'){renderer.domElement.addEventListener('click',()=>{if(!ctrl.isLocked&&document.getElementById('settingsPanel').style.display!=='block')ctrl.lock();});ctrl.addEventListener('lock',()=>{document.getElementById('crosshair').style.display='block';document.getElementById('crosshair').style.opacity='0.8';});document.getElementById('crosshair').style.display='block';}
+      const K={w:0,a:0,s:0,d:0,sp:0,sh:0};let inWater=false,onGround=false,jumpCd=false,velX=0,velY=0,velZ=0,justJumpedOut=false;
+      document.addEventListener('keydown',(e)=>{if(deviceType!=='pc')return;if(e.code==='KeyW')K.w=1;if(e.code==='KeyS')K.s=1;if(e.code==='KeyA')K.a=1;if(e.code==='KeyD')K.d=1;if(e.code==='Space')K.sp=1;if(e.code==='ShiftLeft'||e.code==='ShiftRight')K.sh=1;});
+      document.addEventListener('keyup',(e)=>{if(deviceType!=='pc')return;if(e.code==='KeyW')K.w=0;if(e.code==='KeyS')K.s=0;if(e.code==='KeyA')K.a=0;if(e.code==='KeyD')K.d=0;if(e.code==='Space'){K.sp=0;jumpCd=false;}if(e.code==='ShiftLeft'||e.code==='ShiftRight')K.sh=0;});
+      if(deviceType==='mobile'){document.querySelectorAll('.ctrl-btn').forEach(btn=>{const key=btn.dataset.key;btn.addEventListener('pointerdown',(e)=>{e.preventDefault();if(key==='w')K.w=1;if(key==='s')K.s=1;if(key==='a')K.a=1;if(key==='d')K.d=1;if(key==='space')K.sp=1;if(key==='shift')K.sh=1;});btn.addEventListener('pointerup',(e)=>{e.preventDefault();if(key==='w')K.w=0;if(key==='s')K.s=0;if(key==='a')K.a=0;if(key==='d')K.d=0;if(key==='space'){K.sp=0;jumpCd=false;}if(key==='shift')K.sh=0;});btn.addEventListener('pointerleave',(e)=>{if(key==='w')K.w=0;if(key==='s')K.s=0;if(key==='a')K.a=0;if(key==='d')K.d=0;if(key==='space'){K.sp=0;jumpCd=false;}if(key==='shift')K.sh=0;});});let tsx=0,tsy=0;const euler=new THREE.Euler(0,0,0,'YXZ');renderer.domElement.addEventListener('touchstart',(e)=>{if(e.target===renderer.domElement&&e.touches.length===1){tsx=e.touches[0].clientX;tsy=e.touches[0].clientY;}});renderer.domElement.addEventListener('touchmove',(e)=>{if(e.target===renderer.domElement&&e.touches.length===1){e.preventDefault();const dx=e.touches[0].clientX-tsx,dy=e.touches[0].clientY-tsy;euler.setFromQuaternion(ctrl.getObject().quaternion);euler.y-=dx*0.005*GS.sensMultiplier;euler.x-=dy*0.005*GS.sensMultiplier;euler.x=Math.max(-Math.PI/2.5,Math.min(Math.PI/2.5,euler.x));ctrl.getObject().quaternion.setFromEuler(euler);tsx=e.touches[0].clientX;tsy=e.touches[0].clientY;}},{passive:false});}
+      
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.5); scene.add(ambientLight);
+      const sun = new THREE.DirectionalLight(0xfff5e6, 1.2); sun.position.set(40,55,40); sun.castShadow=true;
+      sun.shadow.mapSize.set(1024,1024); sun.shadow.camera.near=0.5; sun.shadow.camera.far=150;
+      sun.shadow.camera.left=-40; sun.shadow.camera.right=40; sun.shadow.camera.top=40; sun.shadow.camera.bottom=-20;
+      scene.add(sun); window.gameSun = sun; window.gameAmbient = ambientLight; window.applySettings();
+      
+      const sunTex = createPixelTexture('#ffdd00');
+      const sunMesh = new THREE.Mesh(new THREE.PlaneGeometry(4,4), new THREE.MeshBasicMaterial({map:sunTex, side:THREE.DoubleSide}));
+      sunMesh.position.set(40,55,40); scene.add(sunMesh);
+      
+      const moonTex = createPixelTexture('#eeeeff');
+      const moonMesh = new THREE.Mesh(new THREE.PlaneGeometry(3,3), new THREE.MeshBasicMaterial({map:moonTex, side:THREE.DoubleSide}));
+      moonMesh.position.set(-40,-55,-40); scene.add(moonMesh);
+      
+      const starsGeo = new THREE.BufferGeometry();
+      const starsPos = new Float32Array(900);
+      for (let i=0;i<300;i++){starsPos[i*3]=(Math.random()-0.5)*80;starsPos[i*3+1]=Math.random()*30+15;starsPos[i*3+2]=(Math.random()-0.5)*80;}
+      starsGeo.setAttribute('position', new THREE.BufferAttribute(starsPos,3));
+      const stars = new THREE.Points(starsGeo, new THREE.PointsMaterial({color:0xffffff, size:0.25, transparent:true, opacity:0}));
+      scene.add(stars);
+
+      function tex(b,d,l,s=16){const c=document.createElement('canvas');c.width=c.height=s;const ctx=c.getContext('2d');ctx.fillStyle=b;ctx.fillRect(0,0,s,s);for(let i=0;i<s*2;i++){ctx.fillStyle=Math.random()>0.5?d:l;ctx.fillRect(Math.floor(Math.random()*s),Math.floor(Math.random()*s),2,2);}ctx.fillStyle=d;ctx.fillRect(0,0,s,2);ctx.fillRect(0,0,2,s);ctx.fillStyle=l;ctx.fillRect(s-2,0,2,s);ctx.fillRect(0,s-2,s,2);const t=new THREE.CanvasTexture(c);t.magFilter=t.minFilter=THREE.NearestFilter;return t;}
+      function mat(b,d,l){return new THREE.MeshStandardMaterial({map:tex(b,d,l),roughness:0.85});}
+      const M={grass:mat('#7c9c4c','#5a7a3a','#9cc86c'),dirt:mat('#8b5a2b','#6b4226','#a0724a'),stone:mat('#7f8c8d','#5a6a6b','#9ea8a9'),sand:mat('#e8d5a3','#c4b07c','#f5e6c4'),wood:mat('#8b6b4d','#6b4f35','#a88b6a'),leaves:new THREE.MeshStandardMaterial({map:tex('#2d5a27','#1a3d15','#3d7a35'),roughness:0.7,transparent:true,opacity:0.85}),ladder:mat('#c49a3c','#a0782a','#dbb85c'),water:new THREE.MeshStandardMaterial({color:'#3a6b8c',transparent:true,opacity:0.7,roughness:0.1})};
+      const blocks=new Map();function set(x,y,z,m){const key=`${x},${y},${z}`;if(blocks.has(key))return;const mesh=new THREE.Mesh(new THREE.BoxGeometry(1,1,1),m);mesh.position.set(x,y,z);mesh.castShadow=mesh.receiveShadow=true;scene.add(mesh);blocks.set(key,{x,y,z});}
+      for(let ix=-8;ix<8;ix++)for(let iz=-8;iz<8;iz++){const d=Math.sqrt(ix*ix+iz*iz);if(d>7.8)continue;set(ix,0,iz,M.stone);set(ix,1,iz,d>6.5?M.dirt:M.stone);set(ix,2,iz,M.dirt);if(d<6.8)set(ix,3,iz,M.dirt);if(d<7.2)set(ix,4,iz,M.grass);if(d<3.5){set(ix,5,iz,M.grass);}}
+      function tree(x,z,y){set(x,y+1,z,M.wood);set(x,y+2,z,M.wood);set(x,y+3,z,M.wood);[[0,4,0],[1,4,0],[-1,4,0],[0,4,1],[0,4,-1],[1,4,1],[-1,4,-1],[1,4,-1],[-1,4,1],[0,5,0],[1,5,0],[-1,5,0],[0,5,1],[0,5,-1],[0,6,0]].forEach(([dx,dy,dz])=>set(x+dx,y+dy,z+dz,M.leaves));}
+      tree(4,4,4);tree(-4,4,4);tree(4,-4,4);tree(-4,-4,4);tree(0,5,4);tree(5,0,4);tree(-5,0,4);tree(0,-5,4);
+      for(let ix=-8;ix<8;ix++)for(let iz=-8;iz<8;iz++){const d=Math.sqrt(ix*ix+iz*iz);if(d>7.0&&d<=7.9){if(!blocks.has(`${ix},4,${iz}`)&&blocks.has(`${ix},3,${iz}`))set(ix,4,iz,M.sand);if(!blocks.has(`${ix},3,${iz}`)&&blocks.has(`${ix},2,${iz}`)&&d>7.4)set(ix,3,iz,M.sand);}}
+      for(let i=0;i<9;i++){const z=7+i*0.7,y=4-i*0.5,bz=Math.round(z),by=Math.round(y);set(0,by,bz,M.ladder);set(1,by,bz,M.ladder);set(-1,by,bz,M.ladder);if(by>=1){set(2,by+1,bz,M.wood);set(-2,by+1,bz,M.wood);}}
+      set(0,0,13,M.ladder);set(1,0,13,M.ladder);set(-1,0,13,M.ladder);
+      const waterPlane=new THREE.Mesh(new THREE.PlaneGeometry(40,40),M.water);waterPlane.rotation.x=-Math.PI/2;waterPlane.position.y=WATER_Y;waterPlane.receiveShadow=true;scene.add(waterPlane);
+      function checkWater(fx,fy,fz){const midY=fy+PH*0.35;if(midY<WATER_Y)return!blocks.has(`${Math.round(fx)},${Math.floor(WATER_Y)},${Math.round(fz)}`);return false;}
+      function hit(fx,fy,fz){const pMinX=fx-PW/2,pMaxX=fx+PW/2,pMinY=fy,pMaxY=fy+PH,pMinZ=fz-PW/2,pMaxZ=fz+PW/2;const minX=Math.floor(pMinX),maxX=Math.ceil(pMaxX),minY=Math.floor(pMinY),maxY=Math.ceil(pMaxY),minZ=Math.floor(pMinZ),maxZ=Math.ceil(pMaxZ);for(let bx=minX;bx<=maxX;bx++)for(let by=minY;by<=maxY;by++)for(let bz=minZ;bz<=maxZ;bz++)if(blocks.has(`${bx},${by},${bz}`)){const bMinX=bx-0.5,bMaxX=bx+0.5,bMinY=by-0.5,bMaxY=by+0.5,bMinZ=bz-0.5,bMaxZ=bz+0.5;if(pMaxX>bMinX&&pMinX<bMaxX&&pMaxY>bMinY&&pMinY<bMaxY&&pMaxZ>bMinZ&&pMinZ<bMaxZ)return true;}return false;}
+      function push(fx,fy,fz){for(let iter=0;iter<25;iter++){if(!hit(fx,fy,fz))break;const pMinX=fx-PW/2,pMaxX=fx+PW/2,pMinY=fy,pMaxY=fy+PH,pMinZ=fz-PW/2,pMaxZ=fz+PW/2;let bo=Infinity,bdx=0,bdy=0,bdz=0;const minX=Math.floor(pMinX),maxX=Math.ceil(pMaxX),minY=Math.floor(pMinY),maxY=Math.ceil(pMaxY),minZ=Math.floor(pMinZ),maxZ=Math.ceil(pMaxZ);for(let bx=minX;bx<=maxX;bx++)for(let by=minY;by<=maxY;by++)for(let bz=minZ;bz<=maxZ;bz++){if(!blocks.has(`${bx},${by},${bz}`))continue;const bMinX=bx-0.5,bMaxX=bx+0.5,bMinY=by-0.5,bMaxY=by+0.5,bMinZ=bz-0.5,bMaxZ=bz+0.5;const ox=Math.min(pMaxX-bMinX,bMaxX-pMinX),oy=Math.min(pMaxY-bMinY,bMaxY-pMinY),oz=Math.min(pMaxZ-bMinZ,bMaxZ-pMinZ);if(ox<=0||oy<=0||oz<=0)continue;if(ox<bo){bo=ox;bdx=(fx>bx)?ox:-ox;bdy=0;bdz=0;}if(oy<bo){bo=oy;bdx=0;bdy=(fy+PH/2>by)?oy:-oy;bdz=0;}if(oz<bo){bo=oz;bdx=0;bdy=0;bdz=(fz>bz)?oz:-oz;}}fx+=bdx;fy+=bdy;fz+=bdz;}return{x:fx,y:fy,z:fz};}
+      const clock=new THREE.Clock();
+      function loop(){requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),0.1);dayTime+=DAY_SPEED*dt;if(dayTime>1)dayTime-=1;const sunAngle=dayTime*Math.PI*2;
+        const skyColor=getSkyColor();scene.background=skyColor;scene.fog=new THREE.Fog(skyColor,40,85);ambientLight.intensity=getAmbientIntensity();sun.intensity=getSunIntensity();
+        const sunX=35*Math.cos(sunAngle),sunY=35*Math.sin(sunAngle);sun.position.set(sunX,sunY,30);sunMesh.position.set(sunX,sunY,30);sunMesh.lookAt(cam.position);
+        const moonX=-35*Math.cos(sunAngle),moonY=-35*Math.sin(sunAngle);moonMesh.position.set(moonX,moonY,-30);moonMesh.lookAt(cam.position);
+        stars.material.opacity=(1-Math.abs(Math.sin(sunAngle)))*0.9;
+        const cp=ctrl.getObject().position;let fx=cp.x,fy=cp.y-EYE,fz=cp.z;const pp=push(fx,fy,fz);fx=pp.x;fy=pp.y;fz=pp.z;inWater=checkWater(fx,fy,fz);if(hit(fx,fy-0.08,fz))justJumpedOut=false;const isAirborne=!inWater&&justJumpedOut;const uw=cp.y<WATER_Y;overlay.style.opacity=uw?'1':'0';const cd=new THREE.Vector3();cam.getWorldDirection(cd);if(inWater){const hd=new THREE.Vector3(cd.x,0,cd.z).normalize();const cr=new THREE.Vector3().crossVectors(hd,new THREE.Vector3(0,1,0)).normalize();let mx=0,mz=0;if(K.w){mx+=hd.x;mz+=hd.z;}if(K.s){mx-=hd.x;mz-=hd.z;}if(K.a){mx-=cr.x;mz-=cr.z;}if(K.d){mx+=cr.x;mz+=cr.z;}const ml=Math.sqrt(mx*mx+mz*mz);if(ml>0){mx/=ml;mz/=ml;}velX=mx*1.8;velZ=mz*1.8;if(K.sh===1)velY=-4.0;else if(K.sp===1){velY=5.0;if(fy>WATER_Y-0.7){justJumpedOut=true;inWater=false;velY=JUMP*0.8;}}else{const diff=WATER_Y-0.6-fy;velY=diff*2.5;if(velY>2.0)velY=2.0;if(velY<-2.0)velY=-2.0;}let nx=fx+velX*dt,ny=fy+velY*dt,nz=fz+velZ*dt;if(hit(nx,fy,fz))nx=fx;if(hit(fx,fy,nz))nz=fz;if(hit(fx,ny,fz))ny=fy;fx=nx;fy=ny;fz=nz;if(fy<0)fy=0;const p2=push(fx,fy,fz);ctrl.getObject().position.set(p2.x,p2.y+EYE,p2.z);}else{cd.y=0;if(cd.length()<0.01)cd.set(0,0,1);cd.normalize();const cr=new THREE.Vector3().crossVectors(cd,new THREE.Vector3(0,1,0)).normalize();let mx=0,mz=0;if(K.w){mx+=cd.x;mz+=cd.z;}if(K.s){mx-=cd.x;mz-=cd.z;}if(K.a){mx-=cr.x;mz-=cr.z;}if(K.d){mx+=cr.x;mz+=cr.z;}const ml=Math.sqrt(mx*mx+mz*mz);if(ml>0){mx/=ml;mz/=ml;}if(isAirborne){velX=mx*2.5;velZ=mz*2.5;}else{velX=mx*(K.sh?SNEAK:WALK);velZ=mz*(K.sh?SNEAK:WALK);}onGround=hit(fx,fy-0.08,fz);if(onGround){if(K.sp&&!jumpCd){velY=JUMP;jumpCd=true;onGround=false;}else velY=0;}else velY-=GRAVITY*dt;if(velY<-40)velY=-40;let nx=fx+velX*dt,ny=fy+velY*dt,nz=fz+velZ*dt;if(K.sh&&!inWater&&onGround){const edgeX=fx+velX*dt,edgeZ=fz+velZ*dt;if(!hit(edgeX,fy-0.5,fz)||!hit(fx,fy-0.5,edgeZ)){nx=fx;nz=fz;velX=0;velZ=0;}}if(hit(nx,fy,fz)){if(onGround&&!hit(nx,fy+0.5,fz)){fx=nx;fy+=0.5;}else nx=fx;}fx=nx;if(hit(fx,fy,nz)){if(onGround&&!hit(fx,fy+0.5,nz)){fz=nz;fy+=0.5;}else nz=fz;}fz=nz;if(hit(fx,ny,fz)){if(velY>0)ny=fy;else for(let cy=Math.ceil(ny);cy>=Math.floor(ny)-2;cy--)if(!hit(fx,cy,fz)&&hit(fx,cy-0.01,fz)){ny=cy;break;}velY=0;}fy=ny;const p2=push(fx,fy,fz);ctrl.getObject().position.set(p2.x,p2.y+EYE,p2.z);}const pos=ctrl.getObject().position;pos.y=Math.max(0.1+EYE,Math.min(40,pos.y));pos.x=Math.max(-19,Math.min(19,pos.x));pos.z=Math.max(-19,Math.min(19,pos.z));waterPlane.position.y=WATER_Y+Math.sin(Date.now()*0.004)*0.12+Math.cos(Date.now()*0.007)*0.06;renderer.render(scene,cam);}
+      loop();
+      addEventListener('resize',()=>{cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+    }
+    updateAllText();
+  </script>
+</body>
+</html>
